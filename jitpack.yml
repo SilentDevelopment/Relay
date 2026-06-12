@@ -4,6 +4,7 @@ jdk:
 before_install:
   - sdk install java 25-open || true
   - sdk use java 25-open
+  - chmod +x mvnw
 
 install:
-  - mvn -B clean install -DskipTests
+  - ./mvnw -B clean install -DskipTests
