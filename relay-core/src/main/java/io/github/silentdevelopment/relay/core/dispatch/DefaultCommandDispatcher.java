@@ -1,13 +1,13 @@
 package io.github.silentdevelopment.relay.core.dispatch;
 
-import io.github.silentdevelopment.relay.core.argument.reader.DefaultArgumentReaderFactory;
-import io.github.silentdevelopment.relay.core.command.context.DefaultCommandContext;
-import io.github.silentdevelopment.relay.core.match.DefaultCommandMatcher;
-import io.github.silentdevelopment.relay.core.requirement.DefaultCommandAccessResolver;
 import io.github.silentdevelopment.relay.argument.reader.ArgumentReader;
 import io.github.silentdevelopment.relay.argument.reader.ArgumentReaderFactory;
 import io.github.silentdevelopment.relay.command.Command;
 import io.github.silentdevelopment.relay.command.CommandHandler;
+import io.github.silentdevelopment.relay.core.argument.reader.DefaultArgumentReaderFactory;
+import io.github.silentdevelopment.relay.core.command.context.DefaultCommandContext;
+import io.github.silentdevelopment.relay.core.match.DefaultCommandMatcher;
+import io.github.silentdevelopment.relay.core.requirement.DefaultCommandAccessResolver;
 import io.github.silentdevelopment.relay.dispatch.CommandDispatchResult;
 import io.github.silentdevelopment.relay.dispatch.CommandDispatcher;
 import io.github.silentdevelopment.relay.match.CommandMatch;
@@ -16,8 +16,13 @@ import io.github.silentdevelopment.relay.match.CommandMatcher;
 import io.github.silentdevelopment.relay.requirement.CommandAccessResolver;
 import io.github.silentdevelopment.relay.requirement.RequirementResult;
 import io.github.silentdevelopment.relay.text.CommandText;
+import io.github.silentdevelopment.relay.text.CommandTexts;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 
 public final class DefaultCommandDispatcher<S> implements CommandDispatcher<S> {
 
@@ -75,8 +80,8 @@ public final class DefaultCommandDispatcher<S> implements CommandDispatcher<S> {
 
         try {
             reader = this.readerFactory.create(arguments);
-        } catch (IllegalArgumentException ex) {
-            return CommandDispatchResult.invalidUsage(root, null, CommandText.of("invalid_usage", ex.getMessage()));
+        } catch (IllegalArgumentException exception) {
+            return CommandDispatchResult.invalidUsage(root, null, CommandTexts.invalidUsage(exception.getMessage()));
         }
 
         CommandMatchResult result = this.matcher.match(root, reader);
@@ -85,20 +90,23 @@ public final class DefaultCommandDispatcher<S> implements CommandDispatcher<S> {
             return CommandDispatchResult.invalidUsage(
                     result.getCommand().orElse(root),
                     result.getSignature().orElse(null),
-                    CommandText.of("invalid_usage", result.getError().orElse("Invalid usage."))
+                    CommandTexts.invalidUsage(result.getError().orElse("Invalid usage."))
             );
         }
 
         CommandMatch match = result.getMatch();
         Command command = match.getCommand();
-        RequirementResult accessResult = this.accessResolver.evaluate(source, command);
 
-        if (accessResult.isDenied()) {
-            return CommandDispatchResult.requirementFailed(
-                    command,
-                    match.getSignature(),
-                    CommandText.of("requirement_failed", accessResult.getMessage().orElse("You cannot use this command."))
-            );
+        for (Command pathCommand : match.getPath()) {
+            RequirementResult accessResult = this.accessResolver.evaluate(source, pathCommand);
+
+            if (accessResult.isDenied()) {
+                return CommandDispatchResult.requirementFailed(
+                        pathCommand,
+                        match.getSignature(),
+                        accessResult.getText().orElse(CommandTexts.requirementFailed("You cannot use this command."))
+                );
+            }
         }
 
         CommandHandler<S> handler = this.handlers.get(command);
@@ -112,7 +120,8 @@ public final class DefaultCommandDispatcher<S> implements CommandDispatcher<S> {
 
         if (context.isAborted()) {
             if (context.abortMessage().isPresent()) {
-                return CommandDispatchResult.aborted(command, match.getSignature(), context.abortMessage().orElseThrow());
+                CommandText abortMessage = context.abortMessage().orElseThrow();
+                return CommandDispatchResult.aborted(command, match.getSignature(), abortMessage);
             }
 
             return CommandDispatchResult.aborted(command, match.getSignature());

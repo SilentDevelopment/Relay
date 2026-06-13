@@ -8,13 +8,13 @@ import io.github.silentdevelopment.relay.text.CommandResponseRenderer;
 import io.github.silentdevelopment.relay.text.CommandText;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.command.CommandSender;
 
-import java.text.MessageFormat;
 import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
 
-public class PaperCommandResponseRenderer implements CommandResponseRenderer<Component> {
+public class PaperCommandResponseRenderer implements CommandResponseRenderer<CommandSender, Component> {
 
     private final PaperUsageComponentRenderer usageRenderer;
 
@@ -26,18 +26,30 @@ public class PaperCommandResponseRenderer implements CommandResponseRenderer<Com
         this.usageRenderer = Objects.requireNonNull(usageRenderer, "usageRenderer");
     }
 
-    @Override
     public Component renderUnknownCommand() {
+        return renderUnknownCommand(null);
+    }
+
+    @Override
+    public Component renderUnknownCommand(CommandSender source) {
         return Component.text("Unknown command.", NamedTextColor.RED);
     }
 
-    @Override
     public Component renderNoHandler() {
-        return Component.text("No handler is bound for this command.", NamedTextColor.RED);
+        return renderNoHandler(null);
     }
 
     @Override
+    public Component renderNoHandler(CommandSender source) {
+        return Component.text("No handler is bound for this command.", NamedTextColor.RED);
+    }
+
     public Component renderInvalidUsage(CommandText message, List<String> usages) {
+        return renderInvalidUsage(null, message, usages);
+    }
+
+    @Override
+    public Component renderInvalidUsage(CommandSender source, CommandText message, List<String> usages) {
         Component component = Component.text("Invalid usage: " + renderText(message), NamedTextColor.RED);
 
         if (usages.isEmpty()) {
@@ -56,6 +68,11 @@ public class PaperCommandResponseRenderer implements CommandResponseRenderer<Com
     }
 
     public Component renderInvalidUsage(CommandText message, String path, Command command) {
+        return renderInvalidUsage(null, message, path, command);
+    }
+
+    @Override
+    public Component renderInvalidUsage(CommandSender source, CommandText message, String path, Command command) {
         Component component = Component.text("Invalid usage: " + renderText(message), NamedTextColor.RED);
 
         if (command.signatures().isEmpty()) {
@@ -74,29 +91,47 @@ public class PaperCommandResponseRenderer implements CommandResponseRenderer<Com
         return component;
     }
 
-    @Override
     public Component renderRequirementFailure(CommandText message) {
+        return renderRequirementFailure(null, message);
+    }
+
+    @Override
+    public Component renderRequirementFailure(CommandSender source, CommandText message) {
         return Component.text("Access denied: " + renderText(message), NamedTextColor.RED);
     }
 
-    @Override
     public Component renderAbort(CommandText message) {
-        return Component.text(renderText(message), NamedTextColor.RED);
+        return renderAbort(null, message);
     }
 
     @Override
+    public Component renderAbort(CommandSender source, CommandText message) {
+        return Component.text(renderText(message), NamedTextColor.RED);
+    }
+
     public Component renderSuggestions(List<String> suggestions) {
+        return renderSuggestions(null, suggestions);
+    }
+
+    @Override
+    public Component renderSuggestions(CommandSender source, List<String> suggestions) {
         StringJoiner joiner = new StringJoiner(", ");
         suggestions.forEach(joiner::add);
         return Component.text("Suggestions: [" + joiner + "]", NamedTextColor.GRAY);
     }
 
-    private String renderText(CommandText text) {
-        if (text.arguments().isEmpty()) {
-            return text.fallback();
+    protected String renderText(CommandText text) {
+        String value = text.fallback();
+
+        for (int index = 0; index < text.arguments().size(); index++) {
+            value = value.replace("{" + index + "}", String.valueOf(text.arguments().get(index)));
         }
 
-        return MessageFormat.format(text.fallback(), text.arguments().toArray());
+        for (var entry : text.placeholders().entrySet()) {
+            value = value.replace("{" + entry.getKey() + "}", String.valueOf(entry.getValue()));
+        }
+
+        return value;
     }
 
 }

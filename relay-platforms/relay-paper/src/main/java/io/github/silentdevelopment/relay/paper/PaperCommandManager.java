@@ -92,6 +92,10 @@ public final class PaperCommandManager {
         return this.responseRenderer.renderSuggestions(suggestions);
     }
 
+    public Component renderSuggestions(CommandSender source, List<String> suggestions) {
+        return this.responseRenderer.renderSuggestions(source, suggestions);
+    }
+
     public CommandDispatchResult dispatchAndRespond(CommandSender source, Command root, String label, String arguments) {
         Objects.requireNonNull(source, "source");
         Objects.requireNonNull(root, "root");
@@ -105,25 +109,30 @@ public final class PaperCommandManager {
         }
 
         CommandDispatchResult result = this.dispatch(source, label, arguments);
-        this.renderDispatchMessage(root, result).ifPresent(component -> this.responseFunction.send(source, component));
+        this.renderDispatchMessage(source, root, result).ifPresent(component -> this.responseFunction.send(source, component));
         return result;
     }
 
-    public Optional<Component> renderDispatchMessage(Command root, CommandDispatchResult result) {
+    public Optional<Component> renderDispatchMessage(CommandSender source, Command root, CommandDispatchResult result) {
+        Objects.requireNonNull(source, "source");
+
         if (result.getStatus() == CommandDispatchStatus.SUCCESS) {
             return Optional.empty();
         }
 
         if (result.getStatus() == CommandDispatchStatus.UNKNOWN_COMMAND) {
-            return Optional.of(this.responseRenderer.renderUnknownCommand());
+            return Optional.of(this.responseRenderer.renderUnknownCommand(source));
         }
 
         if (result.getStatus() == CommandDispatchStatus.NO_HANDLER) {
-            return Optional.of(this.responseRenderer.renderNoHandler());
+            return Optional.of(this.responseRenderer.renderNoHandler(source));
         }
 
         if (result.getStatus() == CommandDispatchStatus.REQUIREMENT_FAILED) {
-            return Optional.of(this.responseRenderer.renderRequirementFailure(result.getMessage().orElse(CommandTexts.requirementFailed("You cannot use this command."))));
+            return Optional.of(this.responseRenderer.renderRequirementFailure(
+                    source,
+                    result.getMessage().orElse(CommandTexts.requirementFailed("You cannot use this command."))
+            ));
         }
 
         if (result.getStatus() == CommandDispatchStatus.ABORTED) {
@@ -131,7 +140,10 @@ public final class PaperCommandManager {
                 return Optional.empty();
             }
 
-            return Optional.of(this.responseRenderer.renderAbort(result.getMessage().orElse(CommandTexts.aborted("You cannot use this command."))));
+            return Optional.of(this.responseRenderer.renderAbort(
+                    source,
+                    result.getMessage().orElse(CommandTexts.aborted("You cannot use this command."))
+            ));
         }
 
         if (result.getStatus() == CommandDispatchStatus.INVALID_USAGE) {
@@ -142,7 +154,12 @@ public final class PaperCommandManager {
                 path = "/" + root.name();
             }
 
-            return Optional.of(this.responseRenderer.renderInvalidUsage(result.getMessage().orElse(CommandTexts.invalidUsage("Invalid usage.")), path, target));
+            return Optional.of(this.responseRenderer.renderInvalidUsage(
+                    source,
+                    result.getMessage().orElse(CommandTexts.invalidUsage("Invalid usage.")),
+                    path,
+                    target
+            ));
         }
 
         return Optional.empty();

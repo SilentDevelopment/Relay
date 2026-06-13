@@ -10,13 +10,18 @@ import io.github.silentdevelopment.relay.core.requirement.PredicateCommandRequir
 import io.github.silentdevelopment.relay.paper.argument.PaperArgumentTypes;
 import io.github.silentdevelopment.relay.requirement.CommandRequirement;
 import io.github.silentdevelopment.relay.suggestion.SuggestionProvider;
+import io.github.silentdevelopment.relay.text.CommandText;
+import io.github.silentdevelopment.relay.text.CommandTexts;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Objects;
+import java.util.Set;
 
 public final class PaperCommandBuilder {
 
@@ -131,30 +136,92 @@ public final class PaperCommandBuilder {
     }
 
     public PaperCommandBuilder permission(String permission) {
-        if (permission == null || permission.isBlank()) {
-            throw new IllegalArgumentException("permission cannot be null or blank.");
-        }
+        return permission(permission, CommandTexts.noPermission(permission));
+    }
+
+    public PaperCommandBuilder permission(String permission, String message) {
+        return permission(permission, CommandTexts.requirementFailed(message));
+    }
+
+    public PaperCommandBuilder permission(String permission, CommandText denial) {
+        validatePermission(permission);
+        Objects.requireNonNull(denial, "denial");
 
         this.delegate.requirement(new PredicateCommandRequirement<>(
                 sender -> sender.hasPermission(permission),
-                "You do not have permission to use this command."
+                denial.withPlaceholder("permission", permission)
         ));
+
+        return this;
+    }
+
+    public PaperCommandBuilder anyPermission(String... permissions) {
+        return anyPermission(CommandTexts.requirementFailed("You do not have permission to use this command."), permissions);
+    }
+
+    public PaperCommandBuilder anyPermission(CommandText denial, String... permissions) {
+        Set<String> values = permissionSet(permissions);
+        Objects.requireNonNull(denial, "denial");
+
+        this.delegate.requirement(new PredicateCommandRequirement<>(
+                sender -> values.stream().anyMatch(sender::hasPermission),
+                denial.withPlaceholder("permissions", String.join(", ", values))
+        ));
+
+        return this;
+    }
+
+    public PaperCommandBuilder allPermissions(String... permissions) {
+        return allPermissions(CommandTexts.requirementFailed("You do not have permission to use this command."), permissions);
+    }
+
+    public PaperCommandBuilder allPermissions(CommandText denial, String... permissions) {
+        Set<String> values = permissionSet(permissions);
+        Objects.requireNonNull(denial, "denial");
+
+        this.delegate.requirement(new PredicateCommandRequirement<>(
+                sender -> values.stream().allMatch(sender::hasPermission),
+                denial.withPlaceholder("permissions", String.join(", ", values))
+        ));
+
         return this;
     }
 
     public PaperCommandBuilder playerOnly() {
+        return playerOnly(CommandTexts.playerOnly());
+    }
+
+    public PaperCommandBuilder playerOnly(String message) {
+        return playerOnly(CommandTexts.requirementFailed(message));
+    }
+
+    public PaperCommandBuilder playerOnly(CommandText denial) {
+        Objects.requireNonNull(denial, "denial");
+
         this.delegate.requirement(new PredicateCommandRequirement<>(
                 sender -> sender instanceof Player,
-                "Only players can use this command."
+                denial
         ));
+
         return this;
     }
 
     public PaperCommandBuilder consoleOnly() {
+        return consoleOnly(CommandTexts.consoleOnly());
+    }
+
+    public PaperCommandBuilder consoleOnly(String message) {
+        return consoleOnly(CommandTexts.requirementFailed(message));
+    }
+
+    public PaperCommandBuilder consoleOnly(CommandText denial) {
+        Objects.requireNonNull(denial, "denial");
+
         this.delegate.requirement(new PredicateCommandRequirement<>(
                 sender -> !(sender instanceof Player),
-                "Only the console can use this command."
+                denial
         ));
+
         return this;
     }
 
@@ -190,8 +257,37 @@ public final class PaperCommandBuilder {
         return this;
     }
 
+    public CommandBuilder<CommandSender> asCommandBuilder() {
+        return this.delegate;
+    }
+
     public Command build() {
         return this.delegate.build();
+    }
+
+    private static Set<String> permissionSet(String... permissions) {
+        if (permissions == null || permissions.length == 0) {
+            throw new IllegalArgumentException("permissions cannot be null or empty.");
+        }
+
+        Set<String> values = new LinkedHashSet<>();
+
+        for (String permission : permissions) {
+            validatePermission(permission);
+            values.add(permission);
+        }
+
+        if (values.isEmpty()) {
+            throw new IllegalArgumentException("permissions cannot be empty.");
+        }
+
+        return Collections.unmodifiableSet(values);
+    }
+
+    private static void validatePermission(String permission) {
+        if (permission == null || permission.isBlank()) {
+            throw new IllegalArgumentException("permission cannot be null or blank.");
+        }
     }
 
 }

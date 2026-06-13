@@ -7,6 +7,7 @@ import io.github.silentdevelopment.relay.command.option.CommandFlag;
 import io.github.silentdevelopment.relay.command.option.CommandOption;
 import io.github.silentdevelopment.relay.command.option.ValueCommandOption;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -14,14 +15,27 @@ import java.util.Set;
 public final class CommandMatch {
 
     private final Command command;
+    private final List<Command> path;
     private final Signature signature;
     private final Map<Argument<?>, Object> values;
     private final Set<CommandOption> options;
     private final Map<ValueCommandOption<?>, Object> optionValues;
 
     public CommandMatch(Command command, Signature signature, Map<Argument<?>, Object> values, Set<CommandOption> options, Map<ValueCommandOption<?>, Object> optionValues) {
+        this(command, List.of(command), signature, values, options, optionValues);
+    }
+
+    public CommandMatch(Command command, List<Command> path, Signature signature, Map<Argument<?>, Object> values, Set<CommandOption> options, Map<ValueCommandOption<?>, Object> optionValues) {
         this.command = Objects.requireNonNull(command, "command");
         this.signature = Objects.requireNonNull(signature, "signature");
+
+        if (path == null || path.isEmpty()) {
+            throw new IllegalArgumentException("path cannot be null or empty.");
+        }
+
+        if (path.get(path.size() - 1) != command) {
+            throw new IllegalArgumentException("path must end with the matched command.");
+        }
 
         if (values == null) {
             throw new IllegalArgumentException("values cannot be null.");
@@ -35,6 +49,7 @@ public final class CommandMatch {
             throw new IllegalArgumentException("optionValues cannot be null.");
         }
 
+        this.path = List.copyOf(path);
         this.values = Map.copyOf(values);
         this.options = Set.copyOf(options);
         this.optionValues = Map.copyOf(optionValues);
@@ -42,6 +57,10 @@ public final class CommandMatch {
 
     public Command getCommand() {
         return this.command;
+    }
+
+    public List<Command> getPath() {
+        return this.path;
     }
 
     public Signature getSignature() {

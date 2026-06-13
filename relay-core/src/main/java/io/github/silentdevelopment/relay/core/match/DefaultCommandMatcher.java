@@ -1,6 +1,5 @@
 package io.github.silentdevelopment.relay.core.match;
 
-import io.github.silentdevelopment.relay.core.argument.reader.DefaultArgumentReader;
 import io.github.silentdevelopment.relay.argument.Argument;
 import io.github.silentdevelopment.relay.argument.parser.ParseResult;
 import io.github.silentdevelopment.relay.argument.reader.ArgumentReader;
@@ -9,11 +8,19 @@ import io.github.silentdevelopment.relay.command.Signature;
 import io.github.silentdevelopment.relay.command.option.CommandOption;
 import io.github.silentdevelopment.relay.command.option.OptionParseResult;
 import io.github.silentdevelopment.relay.command.option.ValueCommandOption;
+import io.github.silentdevelopment.relay.core.argument.reader.DefaultArgumentReader;
 import io.github.silentdevelopment.relay.match.CommandMatch;
 import io.github.silentdevelopment.relay.match.CommandMatchResult;
 import io.github.silentdevelopment.relay.match.CommandMatcher;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.StringJoiner;
 
 public final class DefaultCommandMatcher implements CommandMatcher {
 
@@ -23,6 +30,8 @@ public final class DefaultCommandMatcher implements CommandMatcher {
         Objects.requireNonNull(reader, "reader");
 
         Command current = command;
+        List<Command> path = new ArrayList<>();
+        path.add(current);
 
         while (reader.hasNext()) {
             Command subcommand = findSubcommand(current, reader.peek());
@@ -32,6 +41,7 @@ public final class DefaultCommandMatcher implements CommandMatcher {
             }
 
             current = subcommand;
+            path.add(current);
             reader.read();
         }
 
@@ -41,10 +51,15 @@ public final class DefaultCommandMatcher implements CommandMatcher {
             return CommandMatchResult.failure(current, null, optionResult.getError());
         }
 
-        return matchSignatures(current, DefaultArgumentReader.of(optionResult.getPositionalTokens()), optionResult);
+        return matchSignatures(current, path, DefaultArgumentReader.of(optionResult.getPositionalTokens()), optionResult);
     }
 
-    private CommandMatchResult matchSignatures(Command command, ArgumentReader reader, OptionParseResult optionResult) {
+    private CommandMatchResult matchSignatures(
+            Command command,
+            List<Command> path,
+            ArgumentReader reader,
+            OptionParseResult optionResult
+    ) {
         if (command.signatures().isEmpty()) {
             return CommandMatchResult.failure(command, null, "This command is not directly executable.");
         }
@@ -86,7 +101,14 @@ public final class DefaultCommandMatcher implements CommandMatcher {
             }
 
             if (error == null) {
-                return CommandMatchResult.success(new CommandMatch(command, signature, values, optionResult.getPresentOptions(), optionResult.getOptionValues()));
+                return CommandMatchResult.success(new CommandMatch(
+                        command,
+                        path,
+                        signature,
+                        values,
+                        optionResult.getPresentOptions(),
+                        optionResult.getOptionValues()
+                ));
             }
 
             reader.setCursor(signatureCursor);
@@ -163,8 +185,8 @@ public final class DefaultCommandMatcher implements CommandMatcher {
     private String remaining(ArgumentReader reader) {
         StringJoiner joiner = new StringJoiner(" ");
 
-        for (int i = reader.getCursor(); i < reader.size(); i++) {
-            joiner.add(reader.getTokens().get(i));
+        for (int index = reader.getCursor(); index < reader.size(); index++) {
+            joiner.add(reader.getTokens().get(index));
         }
 
         return joiner.toString();
@@ -264,7 +286,11 @@ public final class DefaultCommandMatcher implements CommandMatcher {
             return false;
         }
 
-        return allowBarePrefix ? token.length() >= prefix.length() : token.length() > prefix.length();
+        if (allowBarePrefix) {
+            return token.length() >= prefix.length();
+        }
+
+        return token.length() > prefix.length();
     }
 
     private boolean matches(Command command, String input) {

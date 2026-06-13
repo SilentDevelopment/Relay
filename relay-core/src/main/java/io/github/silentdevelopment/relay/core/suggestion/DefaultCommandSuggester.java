@@ -15,7 +15,12 @@ import io.github.silentdevelopment.relay.suggestion.SuggestingArgumentType;
 import io.github.silentdevelopment.relay.suggestion.SuggestionContext;
 import io.github.silentdevelopment.relay.suggestion.SuggestionProvider;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Set;
 
 public final class DefaultCommandSuggester<S> implements CommandSuggester<S> {
 
@@ -37,6 +42,10 @@ public final class DefaultCommandSuggester<S> implements CommandSuggester<S> {
 
         if (command == null) {
             throw new IllegalArgumentException("command cannot be null.");
+        }
+
+        if (!this.accessResolver.canAccess(source, command)) {
+            return List.of();
         }
 
         String safeInput = input == null ? "" : input;
