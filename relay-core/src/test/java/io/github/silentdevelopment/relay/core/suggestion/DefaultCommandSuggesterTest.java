@@ -27,6 +27,67 @@ class DefaultCommandSuggesterTest {
     }
 
     @Test
+    void hidesSubcommandAliasesByDefault() {
+        DefaultCommandSuggester<String> suggester = new DefaultCommandSuggester<>();
+
+        Command search = CommandBuilder.<String>literal("search")
+                .alias("s")
+                .noArgs()
+                .build();
+
+        Command root = CommandBuilder.<String>literal("root")
+                .subcommand(search)
+                .build();
+
+        List<String> suggestions = suggester.suggest("user", root, "");
+
+        assertTrue(suggestions.contains("search"));
+        assertFalse(suggestions.contains("s"));
+    }
+
+    @Test
+    void suggestsSubcommandAliasesWhenEnabled() {
+        DefaultCommandSuggester<String> suggester = new DefaultCommandSuggester<>();
+
+        Command search = CommandBuilder.<String>literal("search")
+                .alias("s")
+                .suggestAliases(true)
+                .noArgs()
+                .build();
+
+        Command root = CommandBuilder.<String>literal("root")
+                .subcommand(search)
+                .build();
+
+        List<String> suggestions = suggester.suggest("user", root, "");
+
+        assertTrue(suggestions.contains("search"));
+        assertTrue(suggestions.contains("s"));
+    }
+
+    @Test
+    void aliasesStillResolveWhenSuggestionsAreDisabled() {
+        DefaultCommandSuggester<String> suggester = new DefaultCommandSuggester<>();
+
+        Command nested = CommandBuilder.<String>literal("nested")
+                .noArgs()
+                .build();
+
+        Command search = CommandBuilder.<String>literal("search")
+                .alias("s")
+                .subcommand(nested)
+                .build();
+
+        Command root = CommandBuilder.<String>literal("root")
+                .subcommand(search)
+                .build();
+
+        List<String> suggestions = suggester.suggest("user", root, "s ");
+
+        assertEquals(List.of("nested"), suggestions);
+    }
+
+    @Test
     void suggestsArgumentValuesFromProvider() {
         DefaultCommandSuggester<String> suggester = new DefaultCommandSuggester<>();
         Argument<String> mode = Argument.required("mode", ArgumentTypes.STRING);
