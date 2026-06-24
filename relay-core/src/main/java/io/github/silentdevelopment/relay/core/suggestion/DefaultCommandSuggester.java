@@ -151,6 +151,10 @@ public final class DefaultCommandSuggester<S> implements CommandSuggester<S> {
 
             addIfMatching(suggestions, subcommand.name(), partial);
 
+            if (!subcommand.suggestAliases()) {
+                continue;
+            }
+
             for (String alias : subcommand.aliases()) {
                 addIfMatching(suggestions, alias, partial);
             }
