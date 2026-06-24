@@ -10,6 +10,10 @@ public interface Command {
 
     List<String> aliases();
 
+    default boolean suggestAliases() {
+        return false;
+    }
+
     String description();
 
     List<Command> subCommands();
