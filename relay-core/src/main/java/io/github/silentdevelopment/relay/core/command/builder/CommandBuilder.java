@@ -16,6 +16,7 @@ public final class CommandBuilder<S> {
     private final String name;
     private String description;
     private final List<String> aliases;
+    private boolean suggestAliases;
     private final List<Command> subcommands;
     private final List<Signature> signatures;
     private final List<CommandOption> options;
@@ -32,6 +33,7 @@ public final class CommandBuilder<S> {
         this.name = name;
         this.description = "";
         this.aliases = new ArrayList<>();
+        this.suggestAliases = false;
         this.subcommands = new ArrayList<>();
         this.signatures = new ArrayList<>();
         this.options = new ArrayList<>();
@@ -92,6 +94,11 @@ public final class CommandBuilder<S> {
             alias(alias);
         }
 
+        return this;
+    }
+
+    public CommandBuilder<S> suggestAliases(boolean suggestAliases) {
+        this.suggestAliases = suggestAliases;
         return this;
     }
 
@@ -210,7 +217,7 @@ public final class CommandBuilder<S> {
     }
 
     public Command build() {
-        return new DefaultCommand<>(this.name, this.description, this.aliases, this.subcommands, this.signatures, this.options, this.requirements, this.suggestionProviders, this.shortFlagPrefix, this.longFlagPrefix);
+        return new DefaultCommand<>(this.name, this.description, this.aliases, this.suggestAliases, this.subcommands, this.signatures, this.options, this.requirements, this.suggestionProviders, this.shortFlagPrefix, this.longFlagPrefix);
     }
 
     private void validateFlagPrefix(String flagPrefix, String label) {
