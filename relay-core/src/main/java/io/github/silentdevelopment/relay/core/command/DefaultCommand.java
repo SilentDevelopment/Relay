@@ -18,6 +18,7 @@ public final class DefaultCommand<S> implements RestrictedCommand<S>, Suggestibl
     private final String name;
     private final String description;
     private final List<String> aliases;
+    private final boolean suggestAliases;
     private final List<Command> subcommands;
     private final List<Signature> signatures;
     private final List<CommandOption> options;
@@ -30,6 +31,7 @@ public final class DefaultCommand<S> implements RestrictedCommand<S>, Suggestibl
             @NotNull String name,
             @Nullable String description,
             @NotNull List<String> aliases,
+            boolean suggestAliases,
             @NotNull List<Command> subcommands,
             @NotNull List<Signature> signatures,
             @NotNull List<CommandOption> options,
@@ -45,6 +47,7 @@ public final class DefaultCommand<S> implements RestrictedCommand<S>, Suggestibl
         this.name = name;
         this.description = description == null ? "" : description;
         this.aliases = List.copyOf(Objects.requireNonNull(aliases, "aliases"));
+        this.suggestAliases = suggestAliases;
         this.subcommands = List.copyOf(Objects.requireNonNull(subcommands, "subcommands"));
         this.signatures = List.copyOf(Objects.requireNonNull(signatures, "signatures"));
         this.options = List.copyOf(Objects.requireNonNull(options, "options"));
@@ -69,6 +72,11 @@ public final class DefaultCommand<S> implements RestrictedCommand<S>, Suggestibl
     @Override
     public @NotNull List<String> aliases() {
         return this.aliases;
+    }
+
+    @Override
+    public boolean suggestAliases() {
+        return this.suggestAliases;
     }
 
     @Override
